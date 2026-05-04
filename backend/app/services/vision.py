@@ -14,6 +14,29 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+# ─── Configuración de sensibilidad ───────────────────────────────────────────
+# Ajustar estos valores para controlar cuántas diferencias se reportan.
+# Valores más altos → menos falsos positivos (menos sensible).
+# Valores más bajos → detecta más diferencias (más sensible).
+
+# SSIM: umbral de binarización del mapa de diferencias (0-255)
+SSIM_DIFF_THRESHOLD: int = 60        # era 60 — subir para ignorar variaciones leves
+# SSIM: área mínima de un contorno para considerarse diferencia real (px²)
+SSIM_MIN_AREA: int = 400             # era 400
+# SSIM: sólo reportar diferencias estructurales si el score global es menor a este valor
+SSIM_GATE: float = 0.97              # era 0.95
+
+# Color: diferencia mínima de matiz (Hue) para considerarse cambio de color (0-180)
+COLOR_HUE_THRESHOLD: int = 40        # 40 era 25
+# Color: área mínima de una región de color diferente (px²)
+COLOR_MIN_AREA: int = 600           # 1500 era 600
+# Color: sólo reportar diferencias de color si la correlación global es menor a este valor
+COLOR_GATE: float = 0.95             # era 0.95
+
+# OCR: confianza mínima de pytesseract para aceptar una palabra detectada (0-100)
+OCR_MIN_CONF: int = 90               # 55 era 30
+
+
 # ─── Tipos internos ──────────────────────────────────────────────────────────
 
 DiffResult = Dict[str, Any]
@@ -48,7 +71,11 @@ def compute_ssim(img1: np.ndarray, img2: np.ndarray) -> Tuple[float, np.ndarray]
     return float(score), diff
 
 
-def find_difference_regions(diff: np.ndarray, threshold: int = 60) -> List[Tuple[int, int, int, int]]:
+def find_difference_regions(
+    diff: np.ndarray,
+    threshold: int = SSIM_DIFF_THRESHOLD,
+    min_area: int = SSIM_MIN_AREA,
+) -> List[Tuple[int, int, int, int]]:
     """Devuelve lista de bounding boxes (x,y,w,h) donde hay diferencias."""
     _, thresh = cv2.threshold(diff, threshold, 255, cv2.THRESH_BINARY_INV)
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
@@ -57,7 +84,7 @@ def find_difference_regions(diff: np.ndarray, threshold: int = 60) -> List[Tuple
     boxes = []
     for cnt in contours:
         area = cv2.contourArea(cnt)
-        if area > 400:  # ignorar artefactos JPEG y ruido pequeño
+        if area > min_area:
             x, y, w, h = cv2.boundingRect(cnt)
             boxes.append((x, y, w, h))
     return boxes
@@ -85,13 +112,13 @@ def detect_color_differences(img1: np.ndarray, img2: np.ndarray) -> List[Tuple[i
     hsv1 = cv2.cvtColor(img1, cv2.COLOR_BGR2HSV)
     hsv2 = cv2.cvtColor(img2, cv2.COLOR_BGR2HSV)
     diff = cv2.absdiff(hsv1[:, :, 0], hsv2[:, :, 0])  # Canal Hue
-    _, thresh = cv2.threshold(diff, 25, 255, cv2.THRESH_BINARY)
+    _, thresh = cv2.threshold(diff, COLOR_HUE_THRESHOLD, 255, cv2.THRESH_BINARY)
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
     dilated = cv2.dilate(thresh, kernel, iterations=2)
     contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     boxes = []
     for cnt in contours:
-        if cv2.contourArea(cnt) > 600:
+        if cv2.contourArea(cnt) > COLOR_MIN_AREA:
             boxes.append(cv2.boundingRect(cnt))
     return boxes
 
@@ -107,7 +134,7 @@ def extract_text_regions(img: np.ndarray) -> List[Dict[str, Any]]:
     for i in range(n):
         text = data["text"][i].strip()
         conf = int(data["conf"][i])
-        if text and conf > 30:
+        if text and conf > OCR_MIN_CONF:
             regions.append({
                 "text": text,
                 "x": data["left"][i],
@@ -245,9 +272,8 @@ def compare_labels(base_path: str, revised_path: str) -> Dict[str, Any]:
     # 4. Construir lista de diferencias unificada
     differences: List[Dict] = []
 
-    # Sólo reportar diferencias estructurales si la similitud es menor al 95%
-    # (evita falsos positivos por artefactos de compresión JPEG)
-    if ssim_score < 0.95:
+    # Sólo reportar diferencias estructurales si la similitud global está por debajo de SSIM_GATE
+    if ssim_score < SSIM_GATE:
         for x, y, w, h in structural_boxes:
             differences.append({
                 "type": "FORMA",
@@ -257,8 +283,8 @@ def compare_labels(base_path: str, revised_path: str) -> Dict[str, Any]:
                 "extra": None,
             })
 
-    # Sólo reportar diferencias de color si la correlación de histograma es menor al 95%
-    if color_score < 0.95:
+    # Sólo reportar diferencias de color si la correlación global está por debajo de COLOR_GATE
+    if color_score < COLOR_GATE:
         for x, y, w, h in color_boxes:
             differences.append({
                 "type": "COLOR",

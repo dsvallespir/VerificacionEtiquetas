@@ -1,3 +1,4 @@
+import io
 import os
 import uuid
 from datetime import datetime
@@ -16,18 +17,38 @@ import cv2
 router = APIRouter(prefix="/api/labels", tags=["labels"])
 
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff"}
+ALLOWED_EXTENSIONS_WITH_PDF = ALLOWED_EXTENSIONS | {".pdf"}
+
+
+def _pdf_to_png_bytes(pdf_bytes: bytes) -> bytes:
+    """Extrae la primera página del PDF y la devuelve como PNG en memoria."""
+    import fitz  # PyMuPDF
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    if doc.page_count == 0:
+        raise HTTPException(status_code=400, detail="El PDF no contiene páginas")
+    page = doc.load_page(0)
+    # Renderizar a 150 DPI para equilibrio entre calidad y tamaño
+    mat = fitz.Matrix(150 / 72, 150 / 72)
+    pix = page.get_pixmap(matrix=mat, alpha=False)
+    return pix.tobytes("png")
 
 
 def _save_upload(file: UploadFile, project_id: int) -> str:
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
     ext = os.path.splitext(file.filename)[1].lower()
-    if ext not in ALLOWED_EXTENSIONS:
+    if ext not in ALLOWED_EXTENSIONS_WITH_PDF:
         raise HTTPException(status_code=400, detail=f"Formato no permitido: {ext}")
-    filename = f"{uuid.uuid4()}{ext}"
-    dest = os.path.join(settings.UPLOAD_DIR, filename)
     content = file.file.read()
     if len(content) > settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024:
         raise HTTPException(status_code=413, detail="Archivo demasiado grande")
+
+    if ext == ".pdf":
+        # Convertir primera página a PNG
+        content = _pdf_to_png_bytes(content)
+        ext = ".png"
+
+    filename = f"{uuid.uuid4()}{ext}"
+    dest = os.path.join(settings.UPLOAD_DIR, filename)
     with open(dest, "wb") as f:
         f.write(content)
     return dest

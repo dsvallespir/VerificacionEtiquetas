@@ -11,3 +11,4 @@ opencv-python-headless>=4.9.0
 scikit-image>=0.22.0
 pytesseract>=0.3.10
 numpy>=1.26.0
+pymupdf>=1.24.0

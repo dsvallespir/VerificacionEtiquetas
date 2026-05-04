@@ -59,7 +59,7 @@ function UploadCard({
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: { 'image/*': [] },
+    accept: { 'image/*': [], 'application/pdf': ['.pdf'] },
     maxFiles: 1,
     disabled: loading,
   })
@@ -159,6 +159,7 @@ function UploadCard({
         <p className="text-sm text-slate-500">
           {loading ? 'Subiendo...' : isDragActive ? 'Soltar aquí' : 'Arrastrá o hacé clic para subir'}
         </p>
+        <p className="text-xs text-slate-400 mt-1">Imagen o PDF (se extrae la primera página)</p>
       </div>
       {replacing && (
         <button
