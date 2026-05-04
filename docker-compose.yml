@@ -1,0 +1,32 @@
+version: '3.9'
+
+services:
+  backend:
+    build: ./backend
+    container_name: verificacion_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - uploads_data:/app/uploads
+    environment:
+      - DATABASE_URL=sqlite:///./verificacion_etiquetas.db
+      - SECRET_KEY=change-me-in-production
+      - DEBUG=true
+    restart: unless-stopped
+
+  frontend:
+    image: node:20-alpine
+    container_name: verificacion_frontend
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "5173:5173"
+    command: sh -c "npm install && npm run dev -- --host"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  uploads_data:
