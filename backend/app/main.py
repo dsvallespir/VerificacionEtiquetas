@@ -31,9 +31,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Montar directorio de uploads para servir imágenes (se crea en lifespan)
-os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
+
 
 # Registrar routers
 app.include_router(auth.router)
@@ -41,6 +39,9 @@ app.include_router(projects.router)
 app.include_router(labels.router)
 app.include_router(reports.router)
 
+# Montar directorio de uploads para servir imágenes (se crea en lifespan)
+os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
 @app.get("/api/health")
 def health():
