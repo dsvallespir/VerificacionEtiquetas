@@ -1,7 +1,13 @@
 import axios from 'axios'
 
+// Detecta si la app corre en producción (Railway) o localmente
+const isProduction = window.location.hostname !== 'localhost'
+
 const api = axios.create({
-  baseURL: '/api',
+  // URL de producción (reemplaza por la URL real de tu BACKEND) vs URL local
+  baseURL: isProduction 
+    ? 'https://verificacionetiquetas-production.up.railway.app/api' 
+    : '/api', 
 })
 
 api.interceptors.request.use((config) => {

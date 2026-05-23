@@ -25,6 +25,7 @@ export const authApi = {
   },
 
   register: async (data: RegisterForm): Promise<User> => {
+    
     const res = await api.post<User>('/auth/register', data)
     console.log(res);
     return res.data
