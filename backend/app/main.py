@@ -46,3 +46,7 @@ app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads"
 @app.get("/api/health")
 def health():
     return {"status": "ok", "version": settings.APP_VERSION}
+
+@app.post("/api/health")
+def health_post():
+    return {"status": "post ok"}
