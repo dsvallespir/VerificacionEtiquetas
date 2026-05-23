@@ -18,14 +18,14 @@ export const authApi = {
     const form = new URLSearchParams()
     form.append('username', data.username)
     form.append('password', data.password)
-    const res = await api.post<{ access_token: string }>('/auth/login', form, {
+    const res = await api.post<{ access_token: string }>('/api/auth/login', form, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     })
     return res.data.access_token
   },
 
   register: async (data: RegisterForm): Promise<User> => {
-    const res = await api.post<User>('/auth/register', data)
+    const res = await api.post<User>('/api/auth/register', data)
     return res.data
   },
 }
