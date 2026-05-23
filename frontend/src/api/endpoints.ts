@@ -102,7 +102,28 @@ export const labelsApi = {
   },
 
   // Extrae el nombre de archivo de la ruta guardada en DB (ej: "uploads/abc.jpg" → "/uploads/abc.jpg")
-  staticUrl: (imagePath: string) => `/${imagePath}`,
+  // Método corregido con detección de entorno
+  staticUrl: (imagePath: string) => {
+    if (!imagePath) return '';
+    
+    // Si la ruta que viene de la DB ya incluye http/https, la devuelve tal cual
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return imagePath;
+    }
+
+    // Detectamos si la app corre en producción (Railway) o en tu computadora
+    const isProduction = window.location.hostname !== 'localhost';
+    
+    // Usamos la URL pública real de tu BACKEND en producción o el localhost
+    const BACKEND_URL = isProduction 
+      ? 'https://verificacionetiquetas-production.up.railway.app/api'  
+      : 'http://localhost:8000';
+
+    // Limpiamos barras duplicadas por si acaso imagePath ya empieza con /
+    const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+
+    return `${BACKEND_URL}${cleanPath}`;
+  }
 }
 
 // ─── Reports ─────────────────────────────────────────────────────────────────
