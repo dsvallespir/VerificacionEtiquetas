@@ -1,6 +1,6 @@
 from pydantic import field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Any
+from pydantic_settings import BaseSettings, SettingsConfigDict, NoDecode
+from typing import Any, Annotated
 
 class Settings(BaseSettings):
     APP_NAME: str = "Verificacion de Etiquetas"
@@ -15,8 +15,10 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "uploads"
     MAX_UPLOAD_SIZE_MB: int = 20
 
-    # Definimos el tipo como lista y asignamos los valores locales por defecto
-    CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000"]
+    # Definimos el tipo como lista y asignamos los valores locales por defecto.
+    # NoDecode evita que pydantic-settings intente parsear el valor como JSON
+    # antes de ejecutar el validador (causa del SettingsError con CORS_ORIGINS).
+    CORS_ORIGINS: Annotated[list[str], NoDecode] = ["http://localhost:5173", "http://localhost:3000"]
 
     # Este validador toma el string de Railway (separado por comas) y lo convierte en lista
     @field_validator("CORS_ORIGINS", mode="before")
