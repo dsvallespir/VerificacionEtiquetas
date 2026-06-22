@@ -21,7 +21,11 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (error) => {
-    if (error.response?.status === 401) {
+    const url = error.config?.url ?? ''
+    // El 401 del propio login es un error de credenciales: lo dejamos pasar
+    // para que la pantalla de login muestre su mensaje, sin redirigir/recargar.
+    const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register')
+    if (error.response?.status === 401 && !isAuthEndpoint) {
       localStorage.removeItem('token')
       window.location.href = '/login'
     }

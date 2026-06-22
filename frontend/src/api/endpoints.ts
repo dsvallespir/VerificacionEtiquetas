@@ -114,10 +114,11 @@ export const labelsApi = {
     // Detectamos si la app corre en producción (Railway) o en tu computadora
     const isProduction = window.location.hostname !== 'localhost';
     
-    // Usamos la URL pública real de tu BACKEND en producción o el localhost
-    const BACKEND_URL = isProduction 
-      ? 'https://verificacionetiquetas-production.up.railway.app/api'  
-      : 'http://localhost:8000';
+    // Usamos la URL pública real de tu BACKEND en producción o el localhost.
+    // En ambos casos incluye /api porque los uploads se montan en /api/uploads.
+    const BACKEND_URL = isProduction
+      ? 'https://verificacionetiquetas-production.up.railway.app/api'
+      : 'http://localhost:8000/api';
 
     // Limpiamos barras duplicadas por si acaso imagePath ya empieza con /
     const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
