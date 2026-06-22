@@ -1,3 +1,4 @@
+import json
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict, NoDecode
 from typing import Any, Annotated
@@ -20,12 +21,27 @@ class Settings(BaseSettings):
     # antes de ejecutar el validador (causa del SettingsError con CORS_ORIGINS).
     CORS_ORIGINS: Annotated[list[str], NoDecode] = ["http://localhost:5173", "http://localhost:3000"]
 
-    # Este validador toma el string de Railway (separado por comas) y lo convierte en lista
+    # Convierte el valor de la env var a lista. Acepta tres formatos:
+    #   - lista JSON:        ["https://a.com","https://b.com"]
+    #   - separado por comas: https://a.com,https://b.com
+    #   - un único valor:     https://a.com
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
-    def assemble_cors_origins(cls, v: Any) -> list[str] | str:
-        if isinstance(v, str) and not v.startswith("["):
-            return [i.strip() for i in v.split(",")]
+    def assemble_cors_origins(cls, v: Any) -> list[str]:
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                return []
+            if v.startswith("["):
+                try:
+                    return json.loads(v)
+                except json.JSONDecodeError:
+                    # JSON malformado: quitamos corchetes/comillas y separamos por coma
+                    inner = v.strip("[]")
+                    return [i.strip().strip("\"'") for i in inner.split(",") if i.strip()]
+            return [i.strip() for i in v.split(",") if i.strip()]
         return v
 
     # En Pydantic v2 se recomienda usar SettingsConfigDict en lugar de class Config
